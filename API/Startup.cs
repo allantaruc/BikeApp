@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using MediatR;
 using Application.Bikes;
 using Application.Core;
+using API.Extensions;
 
 namespace API
 {
@@ -27,30 +28,7 @@ namespace API
         {
 
             services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAPIv5", Version = "v1" });
-            });
-
-            services.AddDbContext<DataContext>(opt =>
-            {
-                opt.UseSqlite(_configuration.GetConnectionString("DefaultConnection"));
-            });
-
-            services.AddCors(opt => {
-                opt.AddPolicy("CorsPolicy", policy => {
-                    // policy.AllowAnyMethod().AllowAnyHeader().WithOrigins("http://localhost:3000");
-                    policy.AllowAnyMethod().AllowAnyHeader().AllowAnyOrigin();
-                });
-            });
-
-            services.AddSingleton<IConfiguration>(_configuration);
-            //services.AddScoped<IRepository, EfRepository.Bikes>();
-            services.AddScoped<IRepository, SqlRepository.Bikes>();
-            
-            services.AddMediatR(typeof(List.Handler).Assembly);
-
-            services.AddAutoMapper(typeof(MappingProfiles).Assembly);
+            services.AddApplicationService(_configuration);
 
         }
 

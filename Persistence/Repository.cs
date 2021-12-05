@@ -30,23 +30,51 @@ namespace Persistence
         {
             private readonly IConfiguration _configuration;
             private readonly string _connectionString;
-            private readonly IMapper _autoMapper;
-            public Bikes(IConfiguration configuration, IMapper autoMapper)
+            public Bikes(IConfiguration configuration)
             {
-                _autoMapper = autoMapper;
                 _configuration = configuration;
                 _connectionString = _configuration.GetConnectionString("BikeAppDbConnection");
             }
 
-            public Task AddBikeAsync(Bike bike)
+            public async Task AddBikeAsync(Bike bike)
             {
-
-                throw new NotImplementedException();
+                using(var connection = new SqlConnection(_connectionString)) {
+                    using(var command = new SqlCommand {
+                        Connection = connection,
+                        CommandText = "dbo.BikeAdd",
+                        CommandType = CommandType.StoredProcedure,
+                        Parameters =  {
+                            new SqlParameter("Id", bike.Id),
+                            new SqlParameter("CustomerName", bike.CustomerName),
+                            new SqlParameter("CheckoutTime", bike.CheckoutTime),
+                            new SqlParameter("CheckinTime", bike.CheckinTime),
+                            new SqlParameter("TotalTimeSpent", bike.TotalTimeSpent),
+                            new SqlParameter("DateModified", bike.DateModified),
+                        }
+                    }){
+                        await connection.OpenAsync();
+                        var result =  await command.ExecuteNonQueryAsync();
+                        await connection.CloseAsync();
+                    }
+                }
             }
 
-            public Task DeleteBikeAsync(Bike bike)
+            public async Task DeleteBikeAsync(Bike bike)
             {
-                throw new NotImplementedException();
+                using(var connection = new SqlConnection(_connectionString)) {
+                    using(var command = new SqlCommand {
+                        Connection = connection,
+                        CommandText = "dbo.BikeDelete",
+                        CommandType = CommandType.StoredProcedure,
+                        Parameters =  {
+                            new SqlParameter("Id", bike.Id)
+                        }
+                    }){
+                        await connection.OpenAsync();
+                        var result =  await command.ExecuteNonQueryAsync();
+                        await connection.CloseAsync();
+                    }
+                }
             }
 
             public async Task<Bike> GetBikeAsync(Guid id)
@@ -101,7 +129,8 @@ namespace Persistence
                             while(await reader.ReadAsync()) {
                                 returnObject.Add(new Bike {
                                     Id = (Guid)reader.GetValue("Id"),
-                                    CheckoutTime =reader.GetValue("CheckoutTime") == DBNull.Value ? null : (DateTime?)reader.GetValue("CheckoutTime"),
+                                    CustomerName = reader.GetValue("CustomerName") == DBNull.Value ? null : (string)reader.GetValue("CustomerName"),
+                                    CheckoutTime = reader.GetValue("CheckoutTime") == DBNull.Value ? null : (DateTime?)reader.GetValue("CheckoutTime"),
                                     CheckinTime = reader.GetValue("CheckinTime") == DBNull.Value ? null : (DateTime?)reader.GetValue("CheckinTime"),
                                     TotalTimeSpent = (int)reader.GetValue("TotalTimeSpent"),
                                     DateModified = (DateTime)reader.GetValue("DateModified"),
@@ -115,9 +144,27 @@ namespace Persistence
                 return returnObject;
             }
 
-            public Task UpdateBikeAsync(Bike bike)
+            public async Task UpdateBikeAsync(Bike bike)
             {
-                throw new NotImplementedException();
+                using(var connection = new SqlConnection(_connectionString)) {
+                    using(var command = new SqlCommand {
+                        Connection = connection,
+                        CommandText = "dbo.BikeEdit",
+                        CommandType = CommandType.StoredProcedure,
+                        Parameters =  {
+                            new SqlParameter("Id", bike.Id),
+                            new SqlParameter("CustomerName", bike.CustomerName),
+                            new SqlParameter("CheckoutTime", bike.CheckoutTime),
+                            new SqlParameter("CheckinTime", bike.CheckinTime),
+                            new SqlParameter("TotalTimeSpent", bike.TotalTimeSpent),
+                            new SqlParameter("DateModified", bike.DateModified),
+                        }
+                    }){
+                        await connection.OpenAsync();
+                        var result =  await command.ExecuteNonQueryAsync();
+                        await connection.CloseAsync();
+                    }
+                }
             }
         }
 
@@ -128,9 +175,8 @@ namespace Persistence
         public class Bikes : IRepository, IBikesRepository
         {
             private readonly DataContext _context;
-            //private readonly Mapper _mapper;
-            public Bikes(DataContext context
-            //, Mapper mapper
+            private readonly Mapper _mapper;
+            public Bikes(DataContext context, Mapper mapper
             )
             {
                 //_mapper = mapper;
@@ -169,10 +215,11 @@ namespace Persistence
                 else throw new KeyNotFoundException($"No bikes found.");
             }
 
-            public Task UpdateBikeAsync(Bike bike)
+            public async Task UpdateBikeAsync(Bike bike)
             {
-                // _mapper.Map()
-                throw new NotImplementedException();
+                var bikeFromDB = await _context.Bikes.FindAsync(bike.Id);
+                _mapper.Map(bike, bikeFromDB);
+                await _context.SaveChangesAsync();
             }
         }
 
